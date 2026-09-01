@@ -4,6 +4,9 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({ baseURL: API_URL });
 
+// ---- Auth ----
+export const loginUser = (data) => api.post("/auth/login", data);
+
 // ---- Equipment ----
 export const getEquipment = (params) => api.get("/equipment", { params });
 export const getEquipmentById = (id) => api.get(`/equipment/${id}`);

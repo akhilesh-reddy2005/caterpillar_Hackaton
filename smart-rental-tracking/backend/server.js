@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
+const authRoutes = require("./routes/auth");
 const equipmentRoutes = require("./routes/equipment");
 const operatorRoutes = require("./routes/operators");
 const bookingRoutes = require("./routes/bookings");
@@ -19,6 +20,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Smart Rental Tracking API is running" });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/operators", operatorRoutes);
 app.use("/api/bookings", bookingRoutes);

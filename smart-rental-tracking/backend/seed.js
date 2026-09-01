@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 const Equipment = require("./models/Equipment");
 const Booking = require("./models/Booking");
@@ -9,6 +10,8 @@ const Operator = require("./models/Operator");
 
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/smart-rental-tracking";
+
+const SALT_ROUNDS = 10;
 
 const equipmentData = [
   {
@@ -97,10 +100,12 @@ const equipmentData = [
   },
 ];
 
-const userData = [
-  { userId: "USR001", name: "Alex Morgan", role: "user" },
-  { userId: "ADM001", name: "Dana Scott", role: "admin" },
-  { userId: "OPR001", name: "Chris Bennett", role: "operator" },
+// Users with plain-text passwords — will be hashed before insertion
+const rawUsers = [
+  { userId: "USR001", username: "joy",   name: "Joy",   role: "user",     password: "tom123$"   },
+  { userId: "USR002", username: "tom",   name: "Tom",   role: "user",     password: "tom123$"   },
+  { userId: "ADM001", username: "jerry", name: "Jerry", role: "admin",    password: "jerry123$" },
+  { userId: "OPR001",                    name: "Chris Bennett", role: "operator" }, // no login
 ];
 
 const operatorData = [
@@ -139,7 +144,21 @@ async function seed() {
   console.log("Cleared old demo data");
 
   await Equipment.insertMany(equipmentData);
-  await User.insertMany(userData);
+
+  // Hash passwords before inserting users
+  const usersToInsert = await Promise.all(
+    rawUsers.map(async (u) => {
+      if (u.password) {
+        const passwordHash = await bcrypt.hash(u.password, SALT_ROUNDS);
+        return { userId: u.userId, username: u.username, name: u.name, role: u.role, passwordHash };
+      }
+      // Operator — no username/password
+      return { userId: u.userId, name: u.name, role: u.role };
+    })
+  );
+  await User.insertMany(usersToInsert);
+  console.log("Users seeded with hashed passwords");
+
   await Operator.insertMany(operatorData);
 
   const maintenanceData = [
@@ -175,7 +194,7 @@ async function seed() {
 
   console.log("Seed complete:");
   console.log(`  ${equipmentData.length} equipment`);
-  console.log(`  ${userData.length} users`);
+  console.log(`  ${usersToInsert.length} users (with hashed passwords)`);
   console.log(`  ${operatorData.length} operators`);
   console.log(`  ${maintenanceData.length} maintenance records`);
 
