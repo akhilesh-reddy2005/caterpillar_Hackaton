@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { clearSession } from "../services/auth.js";
+import Icon from "./Icon.jsx";
 
-export default function Header({ title, name, onMenu }) {
+export default function Header({ title, subtitle, name, role, onMenu }) {
   const navigate = useNavigate();
 
   function logout() {
@@ -9,31 +10,56 @@ export default function Header({ title, name, onMenu }) {
     navigate("/");
   }
 
+  const initials = (name || "?")
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <header className="bg-cat-black text-white sticky top-0 z-20">
-      <div className="px-4 py-3 flex items-center justify-between">
+    <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
           {onMenu && (
             <button
               onClick={onMenu}
-              className="md:hidden text-2xl leading-none px-2"
-              aria-label="Menu"
+              className="rounded-lg p-1.5 text-stone-600 hover:bg-stone-100 md:hidden"
+              aria-label="Toggle menu"
             >
-              ☰
+              <Icon name="menu" />
             </button>
           )}
-          <div className="bg-cat-yellow text-cat-black font-black px-2 py-1 rounded">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-cat-ink font-display text-sm font-extrabold text-cat-yellow">
             CAT
           </div>
-          <h1 className="font-bold text-sm sm:text-lg">{title}</h1>
+          <div className="leading-tight">
+            <p className="font-display text-sm font-bold tracking-tight text-stone-900 sm:text-[15px]">
+              {title}
+            </p>
+            {subtitle && (
+              <p className="text-xs text-stone-500">{subtitle}</p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          {name && <span className="hidden sm:inline text-gray-300">{name}</span>}
-          <button
-            onClick={logout}
-            className="bg-cat-yellow text-cat-black font-semibold px-3 py-1 rounded hover:brightness-95"
-          >
-            Logout
+
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2.5 sm:flex">
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-stone-900 text-xs font-bold text-white">
+              {initials}
+            </div>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold text-stone-900">{name}</p>
+              {role && (
+                <p className="text-[11px] uppercase tracking-wide text-stone-400">
+                  {role}
+                </p>
+              )}
+            </div>
+          </div>
+          <button onClick={logout} className="btn btn-ghost btn-sm">
+            <Icon name="logout" className="h-4 w-4" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </div>

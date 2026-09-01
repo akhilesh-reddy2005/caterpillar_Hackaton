@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import Badge from "./Badge.jsx";
 import { fmtDate } from "../utils/helpers.js";
 import { getMaintenance, updateMaintenance } from "../services/api.js";
+import { Loading, Alert } from "./ui.jsx";
 
 const NEXT_STATUS = {
   pending: "in-progress",
   "in-progress": "resolved",
   resolved: "resolved",
 };
+const FILTERS = ["all", "pending", "in-progress", "resolved"];
 
 export default function MaintenancePanel() {
   const [records, setRecords] = useState([]);
@@ -45,70 +47,78 @@ export default function MaintenancePanel() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold">Maintenance</h3>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="border rounded-lg px-2 py-1 text-sm"
-        >
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="in-progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-        </select>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${
+              filter === f
+                ? "bg-cat-ink text-white"
+                : "bg-white text-stone-500 ring-1 ring-inset ring-stone-200 hover:text-stone-800"
+            }`}
+          >
+            {f.replace(/-/g, " ")}
+          </button>
+        ))}
       </div>
 
-      {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       {loading ? (
-        <p className="text-gray-400 text-sm">Loading…</p>
+        <Loading />
       ) : records.length === 0 ? (
-        <p className="text-gray-400 text-sm">No maintenance records.</p>
+        <div className="card px-6 py-12 text-center text-sm text-stone-400">
+          No maintenance records.
+        </div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3">Equipment</th>
-                <th className="p-3">Issue</th>
-                <th className="p-3">Reported</th>
-                <th className="p-3">Downtime (h)</th>
-                <th className="p-3">Technician</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Resolved</th>
-                <th className="p-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r._id} className="border-t">
-                  <td className="p-3 font-semibold">{r.equipmentId}</td>
-                  <td className="p-3">{r.issueReported}</td>
-                  <td className="p-3">{fmtDate(r.reportedDate)}</td>
-                  <td className="p-3">{r.downtimeHours}</td>
-                  <td className="p-3">{r.technicianId || "—"}</td>
-                  <td className="p-3">
-                    <Badge status={r.status} />
-                  </td>
-                  <td className="p-3">{fmtDate(r.resolvedDate)}</td>
-                  <td className="p-3">
-                    {r.status !== "resolved" ? (
-                      <button
-                        onClick={() => advance(r)}
-                        className="bg-cat-black text-white text-xs font-semibold px-3 py-1 rounded"
-                      >
-                        Mark {NEXT_STATUS[r.status]}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">Done</span>
-                    )}
-                  </td>
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[880px] border-collapse">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="th">Equipment</th>
+                  <th className="th">Issue</th>
+                  <th className="th">Reported</th>
+                  <th className="th text-right">Downtime</th>
+                  <th className="th">Technician</th>
+                  <th className="th">Status</th>
+                  <th className="th">Resolved</th>
+                  <th className="th text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {records.map((r) => (
+                  <tr key={r._id} className="transition hover:bg-stone-50/70">
+                    <td className="td font-display font-bold text-stone-900">
+                      {r.equipmentId}
+                    </td>
+                    <td className="td max-w-xs text-stone-600">{r.issueReported}</td>
+                    <td className="td whitespace-nowrap">{fmtDate(r.reportedDate)}</td>
+                    <td className="td text-right tabular-nums">{r.downtimeHours}h</td>
+                    <td className="td">{r.technicianId || "—"}</td>
+                    <td className="td">
+                      <Badge status={r.status} />
+                    </td>
+                    <td className="td whitespace-nowrap">{fmtDate(r.resolvedDate)}</td>
+                    <td className="td text-right">
+                      {r.status !== "resolved" ? (
+                        <button
+                          onClick={() => advance(r)}
+                          className="btn btn-dark btn-sm capitalize"
+                        >
+                          Mark {NEXT_STATUS[r.status].replace(/-/g, " ")}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-stone-400">Closed</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

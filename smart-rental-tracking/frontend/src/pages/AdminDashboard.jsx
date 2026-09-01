@@ -7,18 +7,20 @@ import MaintenancePanel from "../components/MaintenancePanel.jsx";
 import DemandInsights from "../components/DemandInsights.jsx";
 import OperatorTable from "../components/OperatorTable.jsx";
 import ChatWidget from "../components/ChatWidget.jsx";
+import Icon from "../components/Icon.jsx";
+import { Loading, Alert } from "../components/ui.jsx";
 import { getContext } from "../services/api.js";
 import { getSession } from "../services/auth.js";
 import { displayStatus, getAnomalies } from "../utils/helpers.js";
 
 const NAV = [
-  "Dashboard",
-  "QR Scanner",
-  "Equipment",
-  "Anomalies",
-  "Maintenance",
-  "Demand Insights",
-  "Operators",
+  { label: "Dashboard", icon: "grid" },
+  { label: "QR Scanner", icon: "scan" },
+  { label: "Equipment", icon: "cube" },
+  { label: "Anomalies", icon: "alert" },
+  { label: "Maintenance", icon: "wrench" },
+  { label: "Demand Insights", icon: "chart" },
+  { label: "Operators", icon: "users" },
 ];
 
 export default function AdminDashboard() {
@@ -41,7 +43,7 @@ export default function AdminDashboard() {
       const res = await getContext();
       setData(res.data);
     } catch {
-      setError("Could not load dashboard data. Is the backend running?");
+      setError("Could not load dashboard data. Make sure the backend is running on port 5000.");
     } finally {
       setLoading(false);
     }
@@ -51,19 +53,11 @@ export default function AdminDashboard() {
     load();
   }, []);
 
-  const anomalyCount = data.equipment.reduce(
-    (n, eq) => n + getAnomalies(eq).length,
-    0
-  );
-  const activeCount = data.equipment.filter(
-    (eq) => displayStatus(eq) === "active"
-  ).length;
-  const overdueCount = data.equipment.filter(
-    (eq) => displayStatus(eq) === "overdue"
-  ).length;
-  const pendingMaint = data.maintenance.filter(
-    (m) => m.status !== "resolved"
-  ).length;
+  const anomalyCount = data.equipment.reduce((n, eq) => n + getAnomalies(eq).length, 0);
+  const activeCount = data.equipment.filter((eq) => displayStatus(eq) === "active").length;
+  const overdueCount = data.equipment.filter((eq) => displayStatus(eq) === "overdue").length;
+  const pendingMaint = data.maintenance.filter((m) => m.status !== "resolved").length;
+  const availableOps = data.operators.filter((o) => o.availabilityStatus === "available").length;
 
   function pick(t) {
     setTab(t);
@@ -71,102 +65,128 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#f6f5f3]">
       <Header
-        title="Smart Rental Tracking — Admin"
+        title="Smart Rental Tracking"
+        subtitle="Admin console"
         name={session?.name}
+        role={session?.role}
         onMenu={() => setMenuOpen((o) => !o)}
       />
 
-      <div className="flex">
+      <div className="mx-auto flex max-w-7xl">
         {/* Sidebar */}
+        {menuOpen && (
+          <div
+            className="fixed inset-0 z-10 bg-black/30 md:hidden"
+            onClick={() => setMenuOpen(false)}
+          />
+        )}
         <aside
           className={`${
-            menuOpen ? "block" : "hidden"
-          } md:block w-full md:w-56 bg-cat-gray text-white md:min-h-[calc(100vh-56px)] absolute md:static z-10`}
+            menuOpen ? "translate-x-0" : "-translate-x-full"
+          } fixed left-0 top-16 z-10 h-[calc(100vh-4rem)] w-64 shrink-0 border-r border-stone-200 bg-white p-3 transition-transform md:sticky md:translate-x-0`}
         >
-          <nav className="p-3 space-y-1">
-            {NAV.map((n) => (
-              <button
-                key={n}
-                onClick={() => pick(n)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold ${
-                  tab === n
-                    ? "bg-cat-yellow text-cat-black"
-                    : "hover:bg-white/10"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
+          <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+            Navigation
+          </p>
+          <nav className="space-y-1">
+            {NAV.map((n) => {
+              const on = tab === n.label;
+              return (
+                <button
+                  key={n.label}
+                  onClick={() => pick(n.label)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                    on
+                      ? "bg-cat-ink text-white"
+                      : "text-stone-600 hover:bg-stone-100"
+                  }`}
+                >
+                  <Icon
+                    name={n.icon}
+                    className={`h-[18px] w-[18px] ${on ? "text-cat-yellow" : ""}`}
+                  />
+                  {n.label}
+                  {n.label === "Anomalies" && anomalyCount > 0 && (
+                    <span className="ml-auto rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                      {anomalyCount}
+                    </span>
+                  )}
+                  {n.label === "Maintenance" && pendingMaint > 0 && (
+                    <span className="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                      {pendingMaint}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
         {/* Main */}
-        <main className="flex-1 p-4 space-y-6">
-          {error && (
-            <div className="bg-red-100 text-red-800 p-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-          {loading && <p className="text-gray-400 text-sm">Loading…</p>}
+        <main className="min-w-0 flex-1 space-y-6 p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-xl font-extrabold tracking-tight text-stone-900">
+              {tab}
+            </h2>
+            <button onClick={load} className="btn btn-ghost btn-sm">
+              <Icon name="spark" className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
 
-          {tab === "Dashboard" && (
+          {error && <Alert>{error}</Alert>}
+          {loading && <Loading label="Loading console…" />}
+
+          {!loading && tab === "Dashboard" && (
             <div className="space-y-6">
               <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total Equipment" value={data.equipment.length} />
-                <StatCard label="Active Rentals" value={activeCount} />
-                <StatCard label="Overdue" value={overdueCount} tone="red" />
-                <StatCard label="Open Anomalies" value={anomalyCount} tone="red" />
+                <StatCard label="Total equipment" value={data.equipment.length} icon="cube" />
+                <StatCard label="Active rentals" value={activeCount} icon="scan" />
+                <StatCard label="Overdue" value={overdueCount} icon="alert" tone="red" />
+                <StatCard label="Open anomalies" value={anomalyCount} icon="alert" tone="red" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="bg-white rounded-xl shadow p-4">
-                  <h3 className="font-bold mb-2">Maintenance</h3>
-                  <p className="text-sm text-gray-500">
-                    {pendingMaint} open · {data.maintenance.length} total
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl shadow p-4">
-                  <h3 className="font-bold mb-2">Operators</h3>
-                  <p className="text-sm text-gray-500">
-                    {
-                      data.operators.filter(
-                        (o) => o.availabilityStatus === "available"
-                      ).length
-                    }{" "}
-                    available · {data.operators.length} total
-                  </p>
-                </div>
+                <MiniPanel
+                  title="Maintenance"
+                  primary={`${pendingMaint} open`}
+                  secondary={`${data.maintenance.length} records total`}
+                  icon="wrench"
+                />
+                <MiniPanel
+                  title="Operators"
+                  primary={`${availableOps} available`}
+                  secondary={`${data.operators.length} on roster`}
+                  icon="users"
+                />
               </div>
+              <div className="card p-5">
+                <AnomalyPanel equipment={data.equipment} />
+              </div>
+            </div>
+          )}
+
+          {!loading && tab === "QR Scanner" && <AdminScanner onChange={load} />}
+
+          {!loading && tab === "Equipment" && (
+            <EquipmentTable equipment={data.equipment} />
+          )}
+
+          {!loading && tab === "Anomalies" && (
+            <div className="card p-5">
               <AnomalyPanel equipment={data.equipment} />
             </div>
           )}
 
-          {tab === "QR Scanner" && <AdminScanner onChange={load} />}
+          {!loading && tab === "Maintenance" && <MaintenancePanel />}
 
-          {tab === "Equipment" && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-bold">All Equipment</h2>
-              <EquipmentTable equipment={data.equipment} />
-            </div>
-          )}
-
-          {tab === "Anomalies" && <AnomalyPanel equipment={data.equipment} />}
-
-          {tab === "Maintenance" && <MaintenancePanel />}
-
-          {tab === "Demand Insights" && (
+          {!loading && tab === "Demand Insights" && (
             <DemandInsights equipment={data.equipment} />
           )}
 
-          {tab === "Operators" && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-bold">Operators</h2>
-              <OperatorTable
-                operators={data.operators}
-                bookings={data.bookings}
-              />
-            </div>
+          {!loading && tab === "Operators" && (
+            <OperatorTable operators={data.operators} bookings={data.bookings} />
           )}
         </main>
       </div>
@@ -176,17 +196,46 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value, tone }) {
+function StatCard({ label, value, icon, tone }) {
+  const alert = tone === "red" && value > 0;
   return (
-    <div className="bg-white rounded-xl shadow p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+    <div className="card p-4">
+      <div className="flex items-start justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+          {label}
+        </p>
+        <span
+          className={`grid h-8 w-8 place-items-center rounded-lg ${
+            alert ? "bg-red-50 text-red-500" : "bg-stone-100 text-stone-400"
+          }`}
+        >
+          <Icon name={icon} className="h-4 w-4" />
+        </span>
+      </div>
       <p
-        className={`text-3xl font-black ${
-          tone === "red" && value > 0 ? "text-red-600" : ""
+        className={`mt-2 font-display text-3xl font-extrabold tracking-tight ${
+          alert ? "text-red-600" : "text-stone-900"
         }`}
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function MiniPanel({ title, primary, secondary, icon }) {
+  return (
+    <div className="card flex items-center gap-4 p-5">
+      <span className="grid h-11 w-11 place-items-center rounded-xl bg-cat-yellow/15 text-cat-ink">
+        <Icon name={icon} className="h-5 w-5" />
+      </span>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+          {title}
+        </p>
+        <p className="font-display text-lg font-bold text-stone-900">{primary}</p>
+        <p className="text-xs text-stone-400">{secondary}</p>
+      </div>
     </div>
   );
 }

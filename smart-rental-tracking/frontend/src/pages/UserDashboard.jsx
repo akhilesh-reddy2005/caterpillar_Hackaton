@@ -3,6 +3,8 @@ import Header from "../components/Header.jsx";
 import Badge from "../components/Badge.jsx";
 import BookingModal from "../components/BookingModal.jsx";
 import QRCard from "../components/QRCard.jsx";
+import Icon from "../components/Icon.jsx";
+import { Loading, EmptyState, Alert } from "../components/ui.jsx";
 import { getEquipment, getUserBookings } from "../services/api.js";
 import { getSession } from "../services/auth.js";
 
@@ -25,7 +27,7 @@ export default function UserDashboard() {
       setEquipment(eqRes.data);
       setBookings(bkRes.data);
     } catch {
-      setError("Could not load data. Is the backend running?");
+      setError("Could not load data. Make sure the backend is running on port 5000.");
     } finally {
       setLoading(false);
     }
@@ -36,46 +38,63 @@ export default function UserDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const activeBookings = bookings.filter(
+    (b) => b.booking.qrStatus === "unused" || b.booking.qrStatus === "checked-out"
+  ).length;
+
   return (
     <div className="min-h-screen">
-      <Header title="Smart Rental Tracking" name={session?.name} />
+      <Header
+        title="Smart Rental Tracking"
+        subtitle="Customer portal"
+        name={session?.name}
+        role={session?.role}
+      />
 
-      <div className="max-w-5xl mx-auto p-4 space-y-8">
-        {error && (
-          <div className="bg-red-100 text-red-800 p-3 rounded-lg text-sm">{error}</div>
-        )}
+      <main className="mx-auto max-w-7xl space-y-10 px-4 py-8 sm:px-6">
+        {error && <Alert>{error}</Alert>}
+
+        {/* Hero */}
+        <section className="overflow-hidden rounded-2xl bg-cat-ink px-6 py-7 text-white sm:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-cat-yellow">
+                Welcome back
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight">
+                {session?.name}
+              </h2>
+              <p className="mt-1 text-sm text-stone-400">
+                Reserve equipment and manage active rentals.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Stat label="Available now" value={equipment.length} />
+              <Stat label="Active bookings" value={activeBookings} />
+            </div>
+          </div>
+        </section>
 
         {/* Available Equipment */}
         <section>
-          <h2 className="text-lg font-bold mb-3">Available Equipment</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="section-title">Available Equipment</h3>
+            <span className="text-sm text-stone-400">
+              {equipment.length} unit{equipment.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
           {loading ? (
-            <p className="text-gray-400 text-sm">Loading…</p>
+            <Loading label="Loading fleet…" />
           ) : equipment.length === 0 ? (
-            <p className="text-gray-400 text-sm">No equipment available right now.</p>
+            <EmptyState
+              title="No equipment available"
+              hint="Everything is currently on rent. Check back soon."
+            />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {equipment.map((eq) => (
-                <div
-                  key={eq.equipmentId}
-                  className="bg-white rounded-xl shadow p-4 border-t-4 border-cat-yellow"
-                >
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold">{eq.equipmentId}</h3>
-                    <Badge status={eq.status} />
-                  </div>
-                  <p className="text-sm text-gray-600">{eq.type}</p>
-                  <div className="text-xs text-gray-500 mt-2 space-y-0.5">
-                    <p>Site: {eq.siteId || "—"}</p>
-                    <p>Engine hours/day: {eq.engineHoursPerDay}</p>
-                    <p>Idle hours/day: {eq.idleHoursPerDay}</p>
-                  </div>
-                  <button
-                    onClick={() => setSelected(eq)}
-                    className="mt-3 w-full bg-cat-black text-white text-sm font-semibold py-2 rounded-lg hover:opacity-90"
-                  >
-                    Book Equipment
-                  </button>
-                </div>
+                <EquipmentCard key={eq.equipmentId} eq={eq} onBook={() => setSelected(eq)} />
               ))}
             </div>
           )}
@@ -83,11 +102,14 @@ export default function UserDashboard() {
 
         {/* My Bookings */}
         <section>
-          <h2 className="text-lg font-bold mb-3">My Bookings</h2>
+          <h3 className="section-title mb-4">My Bookings</h3>
           {loading ? (
-            <p className="text-gray-400 text-sm">Loading…</p>
+            <Loading />
           ) : bookings.length === 0 ? (
-            <p className="text-gray-400 text-sm">You have no bookings yet.</p>
+            <EmptyState
+              title="No bookings yet"
+              hint="Book a machine above to get your pickup QR code."
+            />
           ) : (
             <div className="space-y-4">
               {bookings.map((b) => (
@@ -96,7 +118,7 @@ export default function UserDashboard() {
             </div>
           )}
         </section>
-      </div>
+      </main>
 
       {selected && (
         <BookingModal
@@ -109,6 +131,71 @@ export default function UserDashboard() {
           onBooked={load}
         />
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-center">
+      <p className="font-display text-2xl font-extrabold leading-none text-cat-yellow">
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] uppercase tracking-wide text-stone-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function EquipmentCard({ eq, onBook }) {
+  const total = eq.engineHoursPerDay + eq.idleHoursPerDay;
+  const util = total > 0 ? Math.round((eq.engineHoursPerDay / total) * 100) : 0;
+
+  return (
+    <div className="card group flex flex-col overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-lift">
+      <div className="relative flex items-center justify-between border-b border-stone-100 bg-gradient-to-br from-stone-50 to-white px-5 py-4">
+        <div>
+          <p className="font-display text-lg font-bold tracking-tight text-stone-900">
+            {eq.equipmentId}
+          </p>
+          <p className="text-sm text-stone-500">{eq.type}</p>
+        </div>
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-cat-yellow/15 text-cat-ink">
+          <Icon name="cube" className="h-6 w-6" />
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-stone-500">Site</span>
+          <span className="font-medium text-stone-800">{eq.siteId || "Unassigned"}</span>
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between text-xs">
+            <span className="text-stone-500">Engine vs idle (per day)</span>
+            <span className="font-semibold text-stone-700">{util}% active</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+            <div
+              className="h-full rounded-full bg-cat-yellow"
+              style={{ width: `${util}%` }}
+            />
+          </div>
+          <div className="mt-1.5 flex justify-between text-[11px] text-stone-400">
+            <span>{eq.engineHoursPerDay}h engine</span>
+            <span>{eq.idleHoursPerDay}h idle</span>
+          </div>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between pt-1">
+          <Badge status={eq.status} />
+          <button onClick={onBook} className="btn btn-dark btn-sm">
+            Book equipment
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

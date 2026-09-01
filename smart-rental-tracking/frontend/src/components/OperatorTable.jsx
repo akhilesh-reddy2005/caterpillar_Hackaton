@@ -1,7 +1,5 @@
 import Badge from "./Badge.jsx";
 
-// operators: from GET /api/operators
-// bookings: all bookings so we can show the current assignment
 export default function OperatorTable({ operators, bookings }) {
   function currentAssignment(operatorId) {
     const b = bookings.find(
@@ -9,36 +7,56 @@ export default function OperatorTable({ operators, bookings }) {
         bk.assignedOperatorId === operatorId &&
         (bk.qrStatus === "unused" || bk.qrStatus === "checked-out")
     );
-    if (!b) return "—";
-    return `${b.equipmentId} (${b.bookingId})`;
+    if (!b) return null;
+    return `${b.equipmentId} · ${b.bookingId}`;
   }
 
   return (
-    <div className="bg-white rounded-xl shadow overflow-x-auto">
-      <table className="w-full text-sm min-w-[700px]">
-        <thead className="bg-gray-100 text-left">
-          <tr>
-            <th className="p-3">Operator ID</th>
-            <th className="p-3">Name</th>
-            <th className="p-3">Certified Equipment</th>
-            <th className="p-3">Availability</th>
-            <th className="p-3">Current Assignment</th>
-          </tr>
-        </thead>
-        <tbody>
-          {operators.map((op) => (
-            <tr key={op.operatorId} className="border-t">
-              <td className="p-3 font-semibold">{op.operatorId}</td>
-              <td className="p-3">{op.name}</td>
-              <td className="p-3">{op.certifiedEquipmentTypes.join(", ")}</td>
-              <td className="p-3">
-                <Badge status={op.availabilityStatus} />
-              </td>
-              <td className="p-3">{currentAssignment(op.operatorId)}</td>
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse">
+          <thead>
+            <tr className="border-b border-stone-200">
+              <th className="th">Operator</th>
+              <th className="th">Name</th>
+              <th className="th">Certified equipment</th>
+              <th className="th">Availability</th>
+              <th className="th">Current assignment</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-stone-100">
+            {operators.map((op) => {
+              const assignment = currentAssignment(op.operatorId);
+              return (
+                <tr key={op.operatorId} className="transition hover:bg-stone-50/70">
+                  <td className="td font-display font-bold text-stone-900">
+                    {op.operatorId}
+                  </td>
+                  <td className="td">{op.name}</td>
+                  <td className="td">
+                    <div className="flex flex-wrap gap-1">
+                      {op.certifiedEquipmentTypes.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="td">
+                    <Badge status={op.availabilityStatus} />
+                  </td>
+                  <td className="td text-stone-500">
+                    {assignment || <span className="text-stone-300">—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

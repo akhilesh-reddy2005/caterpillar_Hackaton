@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { getOperators, createBooking } from "../services/api.js";
 import Badge from "./Badge.jsx";
 import QRCard from "./QRCard.jsx";
+import Icon from "./Icon.jsx";
+import { Spinner, Alert } from "./ui.jsx";
 
 export default function BookingModal({ equipment, userId, onClose, onBooked }) {
   const [operatorRequest, setOperatorRequest] = useState("caterpillar-assigned");
@@ -38,108 +40,167 @@ export default function BookingModal({ equipment, userId, onClose, onBooked }) {
     }
   }
 
+  const options = [
+    {
+      key: "caterpillar-assigned",
+      title: "Request a Caterpillar operator",
+      desc: "We assign a certified operator automatically.",
+      icon: "users",
+    },
+    {
+      key: "self",
+      title: "Bring my own operator",
+      desc: "You provide the operator ID at pickup.",
+      icon: "cube",
+    },
+  ];
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-30">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="text-lg font-bold">
-            {confirmation ? "Booking Confirmed" : "Book Equipment"}
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-cat-dark/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-lg animate-scale-in flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4">
+          <h2 className="font-display text-base font-bold tracking-tight text-stone-900">
+            {confirmation ? "Booking confirmed" : "Book equipment"}
           </h2>
-          <button onClick={onClose} className="text-gray-400 text-xl leading-none">
-            ✕
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+          >
+            <Icon name="close" className="h-5 w-5" />
           </button>
         </div>
 
-        {!confirmation && (
-          <>
-            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
-              <p>
-                <strong>{equipment.equipmentId}</strong> — {equipment.type}
-              </p>
-              <p className="text-gray-500">
-                Site: {equipment.siteId || "—"} · Engine {equipment.engineHoursPerDay}h/day ·
-                Idle {equipment.idleHoursPerDay}h/day
-              </p>
-            </div>
-
-            <p className="font-semibold text-sm mb-2">
-              How would you like to operate this equipment?
-            </p>
-            <div className="space-y-2 mb-4">
-              <label className="flex items-center gap-2 border rounded-lg p-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={operatorRequest === "self"}
-                  onChange={() => setOperatorRequest("self")}
-                />
-                <span className="text-sm">Bring my own operator</span>
-              </label>
-              <label className="flex items-center gap-2 border rounded-lg p-2 cursor-pointer">
-                <input
-                  type="radio"
-                  checked={operatorRequest === "caterpillar-assigned"}
-                  onChange={() => setOperatorRequest("caterpillar-assigned")}
-                />
-                <span className="text-sm">Request Caterpillar operator</span>
-              </label>
-            </div>
-
-            {operatorRequest === "caterpillar-assigned" && (
-              <div className="mb-4">
-                <p className="text-xs text-gray-500 mb-1">
-                  Available operators certified for {equipment.type} (Caterpillar
-                  assigns one automatically):
-                </p>
-                {loadingOps ? (
-                  <p className="text-sm text-gray-400">Loading operators…</p>
-                ) : operators.length === 0 ? (
-                  <p className="text-sm text-red-600">
-                    No certified operators available right now.
+        <div className="overflow-y-auto px-6 py-5">
+          {!confirmation && (
+            <>
+              <div className="mb-5 flex items-center gap-3 rounded-xl bg-stone-50 p-3.5">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-cat-yellow/15 text-cat-ink">
+                  <Icon name="cube" className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-bold text-stone-900">
+                    {equipment.equipmentId} · {equipment.type}
                   </p>
-                ) : (
-                  <ul className="text-sm border rounded-lg divide-y">
-                    {operators.map((op) => (
-                      <li
-                        key={op.operatorId}
-                        className="px-3 py-2 flex justify-between"
-                      >
-                        <span>
-                          {op.name} ({op.operatorId})
-                        </span>
-                        <Badge status={op.availabilityStatus} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  <p className="truncate text-xs text-stone-500">
+                    Site {equipment.siteId || "—"} · {equipment.engineHoursPerDay}h engine ·{" "}
+                    {equipment.idleHoursPerDay}h idle per day
+                  </p>
+                </div>
               </div>
-            )}
 
-            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+              <p className="mb-2.5 text-sm font-semibold text-stone-800">
+                How would you like to operate this equipment?
+              </p>
+              <div className="space-y-2.5">
+                {options.map((o) => {
+                  const on = operatorRequest === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      onClick={() => setOperatorRequest(o.key)}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition ${
+                        on
+                          ? "border-cat-ink bg-stone-50 ring-2 ring-cat-ink/10"
+                          : "border-stone-200 hover:border-stone-300"
+                      }`}
+                    >
+                      <span
+                        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                          on ? "bg-cat-yellow text-cat-ink" : "bg-stone-100 text-stone-500"
+                        }`}
+                      >
+                        <Icon name={o.icon} className="h-5 w-5" />
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-semibold text-stone-900">
+                          {o.title}
+                        </span>
+                        <span className="block text-xs text-stone-500">{o.desc}</span>
+                      </span>
+                      <span
+                        className={`grid h-5 w-5 place-items-center rounded-full border ${
+                          on ? "border-cat-ink bg-cat-ink text-white" : "border-stone-300"
+                        }`}
+                      >
+                        {on && <Icon name="check" className="h-3 w-3" strokeWidth={2.5} />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
+              {operatorRequest === "caterpillar-assigned" && (
+                <div className="mt-4 rounded-xl border border-stone-200 p-3.5">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
+                    Certified operators available for {equipment.type}
+                  </p>
+                  {loadingOps ? (
+                    <p className="flex items-center gap-2 text-sm text-stone-400">
+                      <Spinner className="h-4 w-4" /> Checking availability…
+                    </p>
+                  ) : operators.length === 0 ? (
+                    <p className="text-sm text-red-600">
+                      No certified operators available right now.
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-stone-100">
+                      {operators.map((op) => (
+                        <li
+                          key={op.operatorId}
+                          className="flex items-center justify-between py-2 text-sm"
+                        >
+                          <span className="font-medium text-stone-800">
+                            {op.name}{" "}
+                            <span className="text-stone-400">({op.operatorId})</span>
+                          </span>
+                          <Badge status={op.availabilityStatus} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-4">
+                  <Alert>{error}</Alert>
+                </div>
+              )}
+            </>
+          )}
+
+          {confirmation && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-inset ring-emerald-600/15">
+                <Icon name="check" className="h-4 w-4" strokeWidth={2.5} />
+                Payment successful — your booking is confirmed.
+              </div>
+              <QRCard data={confirmation} />
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-stone-100 px-6 py-4">
+          {!confirmation ? (
             <button
               onClick={payNow}
               disabled={paying}
-              className="w-full bg-cat-yellow text-cat-black font-bold py-3 rounded-lg hover:brightness-95 disabled:opacity-60"
+              className="btn btn-primary w-full py-3"
             >
-              {paying ? "Processing…" : "Pay Now (mock payment)"}
+              {paying ? (
+                <>
+                  <Spinner className="h-4 w-4" /> Processing payment…
+                </>
+              ) : (
+                "Pay now · mock payment"
+              )}
             </button>
-          </>
-        )}
-
-        {confirmation && (
-          <div className="space-y-4">
-            <p className="text-green-700 text-sm font-semibold">
-              Payment successful — your booking is confirmed.
-            </p>
-            <QRCard data={confirmation} />
-            <button
-              onClick={onClose}
-              className="w-full bg-cat-black text-white font-bold py-2 rounded-lg"
-            >
+          ) : (
+            <button onClick={onClose} className="btn btn-dark w-full py-3">
               Done
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

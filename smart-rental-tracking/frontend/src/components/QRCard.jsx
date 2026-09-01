@@ -1,52 +1,62 @@
 import Badge from "./Badge.jsx";
+import { fmtDate } from "../utils/helpers.js";
 
-// Shows a booking confirmation + QR code image (data URL from backend).
+// Booking confirmation + QR (data URL from backend).
 export default function QRCard({ data }) {
   const { booking, equipment, operator, qrCode } = data;
 
+  const rows = [
+    ["Equipment", `${booking.equipmentId}${equipment ? ` · ${equipment.type}` : ""}`],
+    [
+      "Operator",
+      operator
+        ? `${operator.name} (${operator.operatorId})`
+        : booking.operatorRequest === "self"
+        ? "Own operator"
+        : booking.assignedOperatorId || "—",
+    ],
+    ["Pickup date", fmtDate(booking.checkOutDate)],
+    ["Return date", fmtDate(booking.checkInDate)],
+  ];
+
   return (
-    <div className="border rounded-xl p-4 bg-white">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 space-y-1 text-sm">
-          <p>
-            <span className="text-gray-500">Booking ID:</span>{" "}
-            <strong>{booking.bookingId}</strong>
-          </p>
-          <p>
-            <span className="text-gray-500">Equipment:</span>{" "}
-            {booking.equipmentId} {equipment ? `(${equipment.type})` : ""}
-          </p>
-          <p>
-            <span className="text-gray-500">Payment:</span>{" "}
+    <div className="card overflow-hidden animate-fade-up">
+      <div className="grid gap-6 p-5 sm:grid-cols-[1fr_auto] sm:p-6">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-display text-base font-bold tracking-tight text-stone-900">
+              {booking.bookingId}
+            </p>
             <Badge status={booking.paymentStatus} />
-          </p>
-          <p>
-            <span className="text-gray-500">Operator:</span>{" "}
-            {operator
-              ? `${operator.name} (${operator.operatorId})`
-              : booking.operatorRequest === "self"
-              ? "Own operator"
-              : booking.assignedOperatorId || "—"}
-          </p>
-          <p>
-            <span className="text-gray-500">Pickup status:</span>{" "}
             <Badge status={booking.qrStatus} />
-          </p>
+          </div>
+
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
+            {rows.map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+                  {k}
+                </dt>
+                <dd className="mt-0.5 text-sm font-medium text-stone-800">{v}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <div className="text-center">
+
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-stone-50 p-4 sm:w-52">
           {qrCode ? (
             <img
               src={qrCode}
               alt="Booking QR code"
-              className="w-40 h-40 mx-auto border rounded"
+              className="h-40 w-40 rounded-lg border border-stone-200 bg-white p-1.5"
             />
           ) : (
-            <div className="w-40 h-40 mx-auto border rounded flex items-center justify-center text-xs text-gray-400">
+            <div className="grid h-40 w-40 place-items-center rounded-lg border border-dashed border-stone-300 text-xs text-stone-400">
               No QR
             </div>
           )}
-          <p className="text-xs text-gray-500 mt-2 max-w-[10rem]">
-            Show this QR code to Admin at pickup and return.
+          <p className="text-center text-[11px] leading-snug text-stone-500">
+            Show this QR to Admin at pickup &amp; return
           </p>
         </div>
       </div>

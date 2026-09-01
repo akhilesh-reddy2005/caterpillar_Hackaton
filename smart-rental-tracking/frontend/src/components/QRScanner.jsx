@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import Icon from "./Icon.jsx";
 
 // Camera QR scanner. Calls onResult(decodedText) once on a successful scan.
 export default function QRScanner({ onResult }) {
@@ -15,7 +16,7 @@ export default function QRScanner({ onResult }) {
       scannerRef.current = html5Qr;
       await html5Qr.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: 240 },
         (decodedText) => {
           onResult(decodedText);
           stop();
@@ -23,8 +24,8 @@ export default function QRScanner({ onResult }) {
         () => {}
       );
       setScanning(true);
-    } catch (err) {
-      setError("Could not start camera. Use manual entry below.");
+    } catch {
+      setError("Could not start the camera. Use manual entry below.");
     }
   }
 
@@ -51,25 +52,29 @@ export default function QRScanner({ onResult }) {
 
   return (
     <div>
-      <div
-        id={regionId}
-        className="w-full max-w-xs mx-auto rounded-lg overflow-hidden bg-gray-100"
-      />
-      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+      <div className="relative mx-auto grid min-h-[220px] max-w-xs place-items-center overflow-hidden rounded-xl border border-stone-200 bg-stone-900">
+        <div id={regionId} className="w-full" />
+        {!scanning && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center text-stone-500">
+            <div className="text-center">
+              <Icon name="camera" className="mx-auto h-8 w-8" />
+              <p className="mt-1 text-xs">Camera preview</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
       <div className="mt-3 text-center">
         {!scanning ? (
-          <button
-            onClick={start}
-            className="bg-cat-yellow text-cat-black font-semibold px-4 py-2 rounded-lg"
-          >
-            Start Camera
+          <button onClick={start} className="btn btn-primary btn-sm">
+            <Icon name="camera" className="h-4 w-4" />
+            Start camera
           </button>
         ) : (
-          <button
-            onClick={stop}
-            className="bg-gray-200 font-semibold px-4 py-2 rounded-lg"
-          >
-            Stop Camera
+          <button onClick={stop} className="btn btn-ghost btn-sm">
+            Stop camera
           </button>
         )}
       </div>

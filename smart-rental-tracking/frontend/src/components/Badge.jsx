@@ -1,30 +1,29 @@
-// Small status badge. Pass a status string; it picks a colour.
-const COLORS = {
-  available: "bg-green-100 text-green-800",
-  active: "bg-blue-100 text-blue-800",
-  overdue: "bg-red-100 text-red-800",
-  paid: "bg-green-100 text-green-800",
-  pending: "bg-yellow-100 text-yellow-800",
-  refunded: "bg-gray-200 text-gray-700",
-  unused: "bg-gray-200 text-gray-700",
-  "checked-out": "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  expired: "bg-red-100 text-red-800",
-  "in-progress": "bg-blue-100 text-blue-800",
-  resolved: "bg-green-100 text-green-800",
-  assigned: "bg-yellow-100 text-yellow-800",
-  high: "bg-red-100 text-red-800",
-  medium: "bg-yellow-100 text-yellow-800",
-  low: "bg-gray-200 text-gray-700",
+// Refined status pill with a leading dot.
+const STYLES = {
+  available: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  active: "bg-blue-50 text-blue-700 ring-blue-600/20",
+  overdue: "bg-red-50 text-red-700 ring-red-600/20",
+  paid: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  refunded: "bg-stone-100 text-stone-600 ring-stone-500/20",
+  unused: "bg-stone-100 text-stone-600 ring-stone-500/20",
+  "checked-out": "bg-blue-50 text-blue-700 ring-blue-600/20",
+  completed: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  expired: "bg-red-50 text-red-700 ring-red-600/20",
+  "in-progress": "bg-blue-50 text-blue-700 ring-blue-600/20",
+  resolved: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  assigned: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  high: "bg-red-50 text-red-700 ring-red-600/20",
+  medium: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  low: "bg-stone-100 text-stone-600 ring-stone-500/20",
 };
 
 export default function Badge({ status, label }) {
-  const cls = COLORS[status] || "bg-gray-200 text-gray-700";
+  const cls = STYLES[status] || "bg-stone-100 text-stone-600 ring-stone-500/20";
   return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${cls}`}
-    >
-      {label || status}
+    <span className={`badge ${cls}`}>
+      <span className="badge-dot" />
+      {(label || status || "").replace(/-/g, " ")}
     </span>
   );
 }
