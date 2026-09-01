@@ -34,6 +34,7 @@ export default function AdminDashboard() {
     bookings: [],
     operators: [],
     maintenance: [],
+    telemetry: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,9 +56,24 @@ export default function AdminDashboard() {
     load();
   }, []);
 
-  const anomalyCount = data.equipment.reduce((n, eq) => n + getAnomalies(eq).length, 0);
+  const telMap = {};
+  (data.telemetry || []).forEach((t) => {
+    telMap[t.equipmentId] = t;
+  });
+
+  const anomalyCount = data.equipment.reduce(
+    (n, eq) =>
+      n +
+      getAnomalies(eq, { telemetry: telMap[eq.equipmentId], maintenance: data.maintenance })
+        .length,
+    0
+  );
   const activeCount = data.equipment.filter((eq) => displayStatus(eq) === "active").length;
   const overdueCount = data.equipment.filter((eq) => displayStatus(eq) === "overdue").length;
+  const dueSoonCount = data.equipment.filter((eq) => displayStatus(eq) === "due-soon").length;
+  const offlineCount = (data.telemetry || []).filter(
+    (t) => t.connectionStatus === "offline"
+  ).length;
   const pendingMaint = data.maintenance.filter((m) => m.status !== "resolved").length;
   const availableOps = data.operators.filter((o) => o.availabilityStatus === "available").length;
 
@@ -143,10 +159,12 @@ export default function AdminDashboard() {
 
           {!loading && tab === "Dashboard" && (
             <div className="space-y-6">
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
                 <StatCard label="Total equipment" value={data.equipment.length} icon="cube" />
                 <StatCard label="Active rentals" value={activeCount} icon="scan" />
+                <StatCard label="Due soon" value={dueSoonCount} icon="alert" tone="amber" />
                 <StatCard label="Overdue" value={overdueCount} icon="alert" tone="red" />
+                <StatCard label="Machines offline" value={offlineCount} icon="activity" tone="red" />
                 <StatCard label="Open anomalies" value={anomalyCount} icon="alert" tone="red" />
               </div>
 
@@ -165,7 +183,11 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="card p-5">
-                <AnomalyPanel equipment={data.equipment} />
+                <AnomalyPanel
+                equipment={data.equipment}
+                telemetry={data.telemetry}
+                maintenance={data.maintenance}
+              />
               </div>
             </div>
           )}
@@ -184,7 +206,11 @@ export default function AdminDashboard() {
 
           {!loading && tab === "Anomalies" && (
             <div className="card p-5">
-              <AnomalyPanel equipment={data.equipment} />
+              <AnomalyPanel
+                equipment={data.equipment}
+                telemetry={data.telemetry}
+                maintenance={data.maintenance}
+              />
             </div>
           )}
 
@@ -206,7 +232,9 @@ export default function AdminDashboard() {
 }
 
 function StatCard({ label, value, icon, tone }) {
-  const alert = tone === "red" && value > 0;
+  const active = tone && value > 0;
+  const red = tone === "red" && active;
+  const amber = tone === "amber" && active;
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between">
@@ -215,7 +243,11 @@ function StatCard({ label, value, icon, tone }) {
         </p>
         <span
           className={`grid h-8 w-8 place-items-center rounded-lg ${
-            alert ? "bg-red-50 text-red-500" : "bg-stone-100 text-stone-400"
+            red
+              ? "bg-red-50 text-red-500"
+              : amber
+              ? "bg-amber-50 text-amber-500"
+              : "bg-stone-100 text-stone-400"
           }`}
         >
           <Icon name={icon} className="h-4 w-4" />
@@ -223,7 +255,7 @@ function StatCard({ label, value, icon, tone }) {
       </div>
       <p
         className={`mt-2 font-display text-3xl font-extrabold tracking-tight ${
-          alert ? "text-red-600" : "text-stone-900"
+          red ? "text-red-600" : amber ? "text-amber-600" : "text-stone-900"
         }`}
       >
         {value}

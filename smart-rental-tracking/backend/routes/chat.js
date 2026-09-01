@@ -5,16 +5,20 @@ const Equipment = require("../models/Equipment");
 const Maintenance = require("../models/Maintenance");
 const Booking = require("../models/Booking");
 const Operator = require("../models/Operator");
+const EquipmentTelemetry = require("../models/EquipmentTelemetry");
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const TELEMETRY_TIMEOUT = parseInt(process.env.TELEMETRY_TIMEOUT_SECONDS || "10", 10);
 
 // Same anomaly logic the Admin dashboard uses, computed here so answers are reliable.
-function getAnomalies(eq) {
+function getAnomalies(eq, maintenance = [], telemetry = null) {
   const flags = [];
+
   if (eq.siteId === null || eq.lastOperatorId === null) {
     flags.push({ type: "UNASSIGNED", reason: "No site or no operator on record" });
   }
+
   const total = eq.engineHoursPerDay + eq.idleHoursPerDay;
   if (total > 0 && eq.idleHoursPerDay / total > 0.6) {
     flags.push({
@@ -22,6 +26,7 @@ function getAnomalies(eq) {
       reason: `Idle ratio ${Math.round((eq.idleHoursPerDay / total) * 100)}%`,
     });
   }
+
   if (eq.checkOutDate && eq.checkInDate) {
     const days = Math.round(
       (new Date(eq.checkInDate) - new Date(eq.checkOutDate)) / 86400000
@@ -33,7 +38,62 @@ function getAnomalies(eq) {
       });
     }
   }
+
+  if (eq.engineHoursPerDay === 0 && eq.operatingDays > 0) {
+    flags.push({
+      type: "NEVER OPERATED",
+      reason: `On rent ${eq.operatingDays} operating days but 0 engine hours/day — never started`,
+    });
+  }
+
+  if (eq.idleHoursPerDay >= 10) {
+    flags.push({
+      type: "EXCESSIVE IDLE",
+      reason: `${eq.idleHoursPerDay}h idle per day — sustained long idle hours`,
+    });
+  }
+
+  const openMaint = maintenance.filter(
+    (m) => m.equipmentId === eq.equipmentId && m.status !== "resolved"
+  );
+  if (openMaint.length) {
+    flags.push({
+      type: "OPEN MAINTENANCE",
+      reason: `Unresolved: ${openMaint.map((m) => m.issueReported).join("; ")}`,
+    });
+  }
+
+  if (telemetry && telemetry.connectionStatus === "offline") {
+    flags.push({
+      type: "TELEMETRY OFFLINE",
+      reason:
+        telemetry.offlineDurationSeconds != null
+          ? `No heartbeat for ${telemetry.offlineDurationSeconds}s — machine disconnected`
+          : "No telemetry heartbeat — machine disconnected",
+    });
+  }
+
+  if (eq.status === "active" && eq.checkInDate && new Date(eq.checkInDate) < new Date()) {
+    flags.push({
+      type: "RENTAL OVERRUN",
+      reason: "Past expected return date and not checked back in",
+    });
+  }
+
   return flags;
+}
+
+// Attach live connection status to raw telemetry docs.
+function withStatus(t) {
+  const obj = t.toObject ? t.toObject() : { ...t };
+  const lastSeenMs = obj.lastSeen ? new Date(obj.lastSeen).getTime() : 0;
+  const diff = lastSeenMs > 0 ? Math.floor((Date.now() - lastSeenMs) / 1000) : null;
+  const online = diff !== null && diff <= TELEMETRY_TIMEOUT;
+  return {
+    ...obj,
+    connectionStatus: online ? "online" : "offline",
+    offlineDurationSeconds: online ? 0 : diff,
+  };
 }
 
 // POST /api/chat  { question }
@@ -47,18 +107,34 @@ router.post("/", async (req, res) => {
       return res.json({ answer: "Chatbot is not configured (GROQ_API_KEY missing)." });
     }
 
-    const [equipment, maintenance, bookings, operators] = await Promise.all([
-      Equipment.find().lean(),
-      Maintenance.find().lean(),
-      Booking.find().lean(),
-      Operator.find().lean(),
-    ]);
+    const [equipment, maintenance, bookings, operators, rawTelemetry] =
+      await Promise.all([
+        Equipment.find().lean(),
+        Maintenance.find().lean(),
+        Booking.find().lean(),
+        Operator.find().lean(),
+        EquipmentTelemetry.find(),
+      ]);
+
+    const telemetry = rawTelemetry.map(withStatus);
+    const telMap = Object.fromEntries(telemetry.map((t) => [t.equipmentId, t]));
 
     const anomalies = equipment.flatMap((eq) =>
-      getAnomalies(eq).map((a) => ({ equipmentId: eq.equipmentId, type: eq.type, ...a }))
+      getAnomalies(eq, maintenance, telMap[eq.equipmentId]).map((a) => ({
+        equipmentId: eq.equipmentId,
+        type: eq.type,
+        ...a,
+      }))
     );
 
-    const context = JSON.stringify({ equipment, maintenance, bookings, operators, anomalies });
+    const context = JSON.stringify({
+      equipment,
+      maintenance,
+      bookings,
+      operators,
+      telemetry,
+      anomalies,
+    });
 
     const groqRes = await fetch(GROQ_URL, {
       method: "POST",

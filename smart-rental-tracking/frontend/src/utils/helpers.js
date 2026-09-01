@@ -5,20 +5,26 @@ export function fmtDate(d) {
   return new Date(d).toLocaleDateString();
 }
 
-// Overdue is computed client-side: active + expected return date is in the past.
+// Overdue / due-soon are computed client-side from the expected return date.
 export function displayStatus(eq) {
-  if (eq.status === "active" && eq.checkInDate && new Date(eq.checkInDate) < new Date()) {
-    return "overdue";
+  if (eq.status !== "active") return eq.status; // available
+  if (eq.checkInDate) {
+    const due = new Date(eq.checkInDate);
+    const now = new Date();
+    if (due < now) return "overdue";
+    const daysLeft = (due - now) / 86400000;
+    if (daysLeft <= 2) return "due-soon";
   }
-  if (eq.status === "active") return "active";
-  return eq.status; // available
+  return "active";
 }
 
 // Returns a list of anomaly objects for one equipment record.
-export function getAnomalies(eq) {
+// opts: { telemetry: <matching telemetry record>, maintenance: [<all maintenance records>] }
+export function getAnomalies(eq, opts = {}) {
+  const { telemetry = null, maintenance = [] } = opts;
   const flags = [];
 
-  // 1. Unassigned
+  // 1. Unassigned — no site or no operator on record
   if (eq.siteId === null || eq.lastOperatorId === null) {
     flags.push({
       type: "UNASSIGNED",
@@ -27,7 +33,7 @@ export function getAnomalies(eq) {
     });
   }
 
-  // 2. Underutilized
+  // 2. Underutilized — idle dominates the engine-vs-idle split
   const totalHours = eq.engineHoursPerDay + eq.idleHoursPerDay;
   if (totalHours > 0) {
     const idleRatio = eq.idleHoursPerDay / totalHours;
@@ -40,10 +46,11 @@ export function getAnomalies(eq) {
     }
   }
 
-  // 3. Rental integrity
+  // 3. Rental integrity — operating days exceed the rental window
   if (eq.checkOutDate && eq.checkInDate) {
-    const ms = new Date(eq.checkInDate) - new Date(eq.checkOutDate);
-    const windowDays = Math.round(ms / (1000 * 60 * 60 * 24));
+    const windowDays = Math.round(
+      (new Date(eq.checkInDate) - new Date(eq.checkOutDate)) / 86400000
+    );
     if (eq.operatingDays > windowDays) {
       flags.push({
         type: "RENTAL INTEGRITY ISSUE",
@@ -51,6 +58,61 @@ export function getAnomalies(eq) {
         severity: "high",
       });
     }
+  }
+
+  // 4. Never operated — on rent but the engine was never started
+  if (eq.engineHoursPerDay === 0 && eq.operatingDays > 0) {
+    flags.push({
+      type: "NEVER OPERATED",
+      reason: `On rent for ${eq.operatingDays} operating days but 0 engine hours/day — the machine was never started.`,
+      severity: "high",
+    });
+  }
+
+  // 5. Excessive idle — sustained long idle hours (absolute, not a ratio)
+  if (eq.idleHoursPerDay >= 10) {
+    flags.push({
+      type: "EXCESSIVE IDLE",
+      reason: `${eq.idleHoursPerDay}h idle per day — sustained long idle hours indicate misallocation.`,
+      severity: "medium",
+    });
+  }
+
+  // 6. Open maintenance — a rented/tracked machine with unresolved repairs
+  const openMaint = maintenance.filter(
+    (m) => m.equipmentId === eq.equipmentId && m.status !== "resolved"
+  );
+  if (openMaint.length) {
+    flags.push({
+      type: "OPEN MAINTENANCE",
+      reason: `${openMaint.length} unresolved maintenance record(s): ${openMaint
+        .map((m) => m.issueReported)
+        .join("; ")}.`,
+      severity: "medium",
+    });
+  }
+
+  // 7. Telemetry offline — heartbeat lost (possible breakdown / disconnect / theft)
+  if (telemetry && telemetry.connectionStatus === "offline") {
+    const secs = telemetry.offlineDurationSeconds;
+    const threshold = telemetry.timeoutThresholdSeconds ?? 10;
+    flags.push({
+      type: "TELEMETRY OFFLINE",
+      reason:
+        secs != null
+          ? `No heartbeat for ${secs}s (threshold ${threshold}s) — machine disconnected.`
+          : "No telemetry heartbeat received — machine disconnected.",
+      severity: "high",
+    });
+  }
+
+  // 8. Rental overrun — past the expected return date, not checked back in
+  if (displayStatus(eq) === "overdue") {
+    flags.push({
+      type: "RENTAL OVERRUN",
+      reason: `Past expected return date (${fmtDate(eq.checkInDate)}) and not checked back in.`,
+      severity: "high",
+    });
   }
 
   return flags;

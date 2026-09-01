@@ -6,13 +6,27 @@ const TONE = {
   UNASSIGNED: "border-l-amber-400",
   UNDERUTILIZED: "border-l-blue-400",
   "RENTAL INTEGRITY ISSUE": "border-l-red-400",
+  "NEVER OPERATED": "border-l-red-400",
+  "EXCESSIVE IDLE": "border-l-amber-400",
+  "OPEN MAINTENANCE": "border-l-purple-400",
+  "TELEMETRY OFFLINE": "border-l-red-400",
+  "RENTAL OVERRUN": "border-l-red-400",
 };
 
-export default function AnomalyPanel({ equipment }) {
+export default function AnomalyPanel({ equipment, telemetry = [], maintenance = [] }) {
+  const telMap = {};
+  telemetry.forEach((t) => {
+    telMap[t.equipmentId] = t;
+  });
+
   const cards = [];
   equipment.forEach((eq) => {
-    getAnomalies(eq).forEach((a) => cards.push({ eq, ...a }));
+    getAnomalies(eq, { telemetry: telMap[eq.equipmentId], maintenance }).forEach((a) =>
+      cards.push({ eq, ...a })
+    );
   });
+
+  const highCount = cards.filter((c) => c.severity === "high").length;
 
   return (
     <div>
@@ -20,12 +34,13 @@ export default function AnomalyPanel({ equipment }) {
         <h3 className="section-title">Anomaly Flags</h3>
         <span
           className="grid h-4 w-4 cursor-help place-items-center rounded-full bg-stone-200 text-[10px] font-bold text-stone-500"
-          title="This anomaly is meaningful because pickup and return dates are now witnessed by Admin QR scans rather than being self-reported."
+          title="These anomalies are meaningful because usage is now verified — pickup/return are witnessed by Admin QR scans, and running hours come from a live machine heartbeat, not self-reported logs."
         >
           i
         </span>
         <span className="ml-auto text-sm text-stone-400">
           {cards.length} flag{cards.length === 1 ? "" : "s"}
+          {highCount > 0 && ` · ${highCount} high`}
         </span>
       </div>
 

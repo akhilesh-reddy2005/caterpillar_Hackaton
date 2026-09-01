@@ -2,7 +2,7 @@ import { useState } from "react";
 import Badge from "./Badge.jsx";
 import { fmtDate, displayStatus } from "../utils/helpers.js";
 
-const FILTERS = ["all", "available", "active", "overdue"];
+const FILTERS = ["all", "available", "active", "due-soon", "overdue"];
 
 export default function EquipmentTable({ equipment }) {
   const [filter, setFilter] = useState("all");
@@ -24,7 +24,7 @@ export default function EquipmentTable({ equipment }) {
                 : "bg-white text-stone-500 ring-1 ring-inset ring-stone-200 hover:text-stone-800"
             }`}
           >
-            {f}
+            {f.replace(/-/g, " ")}
             {f !== "all" && (
               <span className="ml-1.5 opacity-60">
                 {equipment.filter((eq) => displayStatus(eq) === f).length}
