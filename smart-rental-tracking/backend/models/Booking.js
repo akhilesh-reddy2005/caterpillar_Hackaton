@@ -1,0 +1,27 @@
+const mongoose = require("mongoose");
+
+const bookingSchema = new mongoose.Schema({
+  bookingId: { type: String, unique: true, required: true },
+  userId: { type: String, required: true },
+  equipmentId: { type: String, required: true, ref: "Equipment" },
+  paymentStatus: {
+    type: String,
+    enum: ["paid", "pending", "refunded"],
+    default: "pending",
+  },
+  qrStatus: {
+    type: String,
+    enum: ["unused", "checked-out", "completed", "expired"],
+    default: "unused",
+  },
+  operatorRequest: {
+    type: String,
+    enum: ["self", "caterpillar-assigned"],
+  },
+  assignedOperatorId: { type: String, default: null },
+  checkOutDate: { type: Date, default: null },
+  checkInDate: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+
+module.exports = mongoose.model("Booking", bookingSchema);
