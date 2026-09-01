@@ -99,7 +99,7 @@ export default function ChatWidget() {
                     : "rounded-bl-sm bg-white text-stone-700 shadow-card"
                 }`}
               >
-                {m.text}
+                {m.from === "bot" ? <FormattedText text={m.text} /> : m.text}
               </div>
             ))}
             {loading && (
@@ -142,5 +142,45 @@ export default function ChatWidget() {
         </div>
       )}
     </>
+  );
+}
+
+// Lightweight formatter: **bold**, "- " bullets, blank lines. Strips markdown
+// tables / headings / stray pipes so answers read cleanly in the narrow bubble.
+function inline(text) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
+
+function FormattedText({ text }) {
+  const lines = (text || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !/^\|?\s*-{2,}/.test(l)); // drop table separator rows
+
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => {
+        if (/^[-*]\s+/.test(line)) {
+          return (
+            <div key={i} className="flex gap-1.5">
+              <span className="mt-[2px] text-stone-400">•</span>
+              <span>{inline(line.replace(/^[-*]\s+/, ""))}</span>
+            </div>
+          );
+        }
+        // markdown table row -> "a — b — c"
+        if (line.includes("|")) {
+          const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+          return <p key={i}>{inline(cells.join(" — "))}</p>;
+        }
+        return <p key={i}>{inline(line.replace(/^#+\s*/, ""))}</p>;
+      })}
+    </div>
   );
 }

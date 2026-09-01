@@ -75,9 +75,12 @@ router.post("/", async (req, res) => {
             role: "system",
             content:
               "You are the assistant for a Caterpillar equipment rental dashboard. " +
-              "Answer ONLY from the JSON context provided. Be concise and specific — " +
-              "cite equipment IDs, sites and operator IDs. If the context does not " +
-              "contain the answer, say so.",
+              "Answer ONLY from the JSON context provided. Cite equipment IDs, sites " +
+              "and operator IDs. If the context does not contain the answer, say so.\n\n" +
+              "This reply is shown in a narrow chat window. Reply in short plain " +
+              "sentences. When listing items, use simple dash bullets like:\n" +
+              "- EQ1001 (site S003): idle ratio 87%\n" +
+              "Do NOT use markdown tables, pipe characters, or headings. Keep it under 120 words.",
           },
           { role: "user", content: `CONTEXT:\n${context}\n\nQUESTION: ${question}` },
         ],
