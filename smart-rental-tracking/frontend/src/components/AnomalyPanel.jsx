@@ -2,16 +2,7 @@ import Badge from "./Badge.jsx";
 import Icon from "./Icon.jsx";
 import { getAnomalies } from "../utils/helpers.js";
 
-const TONE = {
-  UNASSIGNED: "border-l-amber-400",
-  UNDERUTILIZED: "border-l-blue-400",
-  "RENTAL INTEGRITY ISSUE": "border-l-red-400",
-  "NEVER OPERATED": "border-l-red-400",
-  "EXCESSIVE IDLE": "border-l-amber-400",
-  "OPEN MAINTENANCE": "border-l-purple-400",
-  "TELEMETRY OFFLINE": "border-l-red-400",
-  "RENTAL OVERRUN": "border-l-red-400",
-};
+const SEV_RANK = { high: 2, medium: 1, low: 0 };
 
 export default function AnomalyPanel({ equipment, telemetry = [], maintenance = [] }) {
   const telMap = {};
@@ -19,14 +10,20 @@ export default function AnomalyPanel({ equipment, telemetry = [], maintenance = 
     telMap[t.equipmentId] = t;
   });
 
-  const cards = [];
+  // One group per flagged machine — never repeat the same equipment ID.
+  const groups = [];
   equipment.forEach((eq) => {
-    getAnomalies(eq, { telemetry: telMap[eq.equipmentId], maintenance }).forEach((a) =>
-      cards.push({ eq, ...a })
+    const flags = getAnomalies(eq, { telemetry: telMap[eq.equipmentId], maintenance });
+    if (!flags.length) return;
+    const worst = flags.reduce(
+      (s, f) => (SEV_RANK[f.severity] > SEV_RANK[s] ? f.severity : s),
+      "low"
     );
+    groups.push({ eq, flags, worst });
   });
+  groups.sort((a, b) => SEV_RANK[b.worst] - SEV_RANK[a.worst] || b.flags.length - a.flags.length);
 
-  const highCount = cards.filter((c) => c.severity === "high").length;
+  const totalFlags = groups.reduce((n, g) => n + g.flags.length, 0);
 
   return (
     <div>
@@ -39,38 +36,48 @@ export default function AnomalyPanel({ equipment, telemetry = [], maintenance = 
           i
         </span>
         <span className="ml-auto text-sm text-stone-400">
-          {cards.length} flag{cards.length === 1 ? "" : "s"}
-          {highCount > 0 && ` · ${highCount} high`}
+          {groups.length} machine{groups.length === 1 ? "" : "s"} · {totalFlags} issue
+          {totalFlags === 1 ? "" : "s"}
         </span>
       </div>
 
-      {cards.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-inset ring-emerald-600/15">
           <Icon name="check" className="h-4 w-4" strokeWidth={2.5} />
           No anomalies detected across the fleet.
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((c, i) => (
+          {groups.map(({ eq, flags, worst }) => (
             <div
-              key={i}
+              key={eq.equipmentId}
               className={`rounded-xl border border-stone-200 border-l-4 bg-white p-4 shadow-card ${
-                TONE[c.type] || "border-l-stone-300"
+                worst === "high" ? "border-l-red-400" : "border-l-amber-400"
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-display text-sm font-bold text-stone-900">
-                    {c.eq.equipmentId}
+                    {eq.equipmentId}
                   </p>
-                  <p className="text-xs text-stone-400">{c.eq.type}</p>
+                  <p className="text-xs text-stone-400">
+                    {eq.type}
+                    {eq.siteId ? ` · ${eq.siteId}` : ""}
+                  </p>
                 </div>
-                <Badge status={c.severity} />
+                <Badge status={worst} />
               </div>
-              <p className="mt-2.5 text-xs font-bold uppercase tracking-wide text-stone-700">
-                {c.type}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-stone-500">{c.reason}</p>
+
+              <ul className="mt-3 space-y-2.5">
+                {flags.map((f, i) => (
+                  <li key={i}>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-stone-700">
+                      {f.type}
+                    </p>
+                    <p className="text-xs leading-relaxed text-stone-500">{f.reason}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>

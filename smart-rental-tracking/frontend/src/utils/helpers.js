@@ -33,17 +33,28 @@ export function getAnomalies(eq, opts = {}) {
     });
   }
 
-  // 2. Underutilized — idle dominates the engine-vs-idle split
+  // 2. Utilisation family — emit at most ONE flag, most specific first, so a
+  //    machine that is idle-heavy doesn't get three overlapping cards.
   const totalHours = eq.engineHoursPerDay + eq.idleHoursPerDay;
-  if (totalHours > 0) {
-    const idleRatio = eq.idleHoursPerDay / totalHours;
-    if (idleRatio > 0.6) {
-      flags.push({
-        type: "UNDERUTILIZED",
-        reason: `Idle ratio ${(idleRatio * 100).toFixed(0)}% (idle ${eq.idleHoursPerDay}h vs engine ${eq.engineHoursPerDay}h per day).`,
-        severity: "high",
-      });
-    }
+  const idleRatio = totalHours > 0 ? eq.idleHoursPerDay / totalHours : 0;
+  if (eq.engineHoursPerDay === 0 && eq.operatingDays > 0) {
+    flags.push({
+      type: "NEVER OPERATED",
+      reason: `On rent for ${eq.operatingDays} operating days but 0 engine hours/day — the machine was never started.`,
+      severity: "high",
+    });
+  } else if (idleRatio > 0.6) {
+    flags.push({
+      type: "UNDERUTILIZED",
+      reason: `Idle ratio ${(idleRatio * 100).toFixed(0)}% (idle ${eq.idleHoursPerDay}h vs engine ${eq.engineHoursPerDay}h per day).`,
+      severity: "high",
+    });
+  } else if (eq.idleHoursPerDay >= 10) {
+    flags.push({
+      type: "EXCESSIVE IDLE",
+      reason: `${eq.idleHoursPerDay}h idle per day — sustained long idle hours indicate misallocation.`,
+      severity: "medium",
+    });
   }
 
   // 3. Rental integrity — operating days exceed the rental window
@@ -60,25 +71,7 @@ export function getAnomalies(eq, opts = {}) {
     }
   }
 
-  // 4. Never operated — on rent but the engine was never started
-  if (eq.engineHoursPerDay === 0 && eq.operatingDays > 0) {
-    flags.push({
-      type: "NEVER OPERATED",
-      reason: `On rent for ${eq.operatingDays} operating days but 0 engine hours/day — the machine was never started.`,
-      severity: "high",
-    });
-  }
-
-  // 5. Excessive idle — sustained long idle hours (absolute, not a ratio)
-  if (eq.idleHoursPerDay >= 10) {
-    flags.push({
-      type: "EXCESSIVE IDLE",
-      reason: `${eq.idleHoursPerDay}h idle per day — sustained long idle hours indicate misallocation.`,
-      severity: "medium",
-    });
-  }
-
-  // 6. Open maintenance — a rented/tracked machine with unresolved repairs
+  // 4. Open maintenance — a rented/tracked machine with unresolved repairs
   const openMaint = maintenance.filter(
     (m) => m.equipmentId === eq.equipmentId && m.status !== "resolved"
   );
@@ -92,7 +85,7 @@ export function getAnomalies(eq, opts = {}) {
     });
   }
 
-  // 7. Telemetry offline — heartbeat lost (possible breakdown / disconnect / theft)
+  // 5. Telemetry offline — heartbeat lost (possible breakdown / disconnect / theft)
   if (telemetry && telemetry.connectionStatus === "offline") {
     const secs = telemetry.offlineDurationSeconds;
     const threshold = telemetry.timeoutThresholdSeconds ?? 10;
@@ -106,7 +99,7 @@ export function getAnomalies(eq, opts = {}) {
     });
   }
 
-  // 8. Rental overrun — past the expected return date, not checked back in
+  // 6. Rental overrun — past the expected return date, not checked back in
   if (displayStatus(eq) === "overdue") {
     flags.push({
       type: "RENTAL OVERRUN",
