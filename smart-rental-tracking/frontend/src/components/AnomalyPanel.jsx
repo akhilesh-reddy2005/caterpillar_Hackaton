@@ -71,9 +71,18 @@ export default function AnomalyPanel({ equipment, telemetry = [], maintenance = 
               <ul className="mt-3 space-y-2.5">
                 {flags.map((f, i) => (
                   <li key={i}>
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-stone-700">
-                      {f.type}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-stone-700">
+                        {f.type}
+                      </p>
+                      <span
+                        className={`text-[9px] font-bold uppercase ${
+                          f.severity === "high" ? "text-red-500" : "text-amber-500"
+                        }`}
+                      >
+                        {f.severity}
+                      </span>
+                    </div>
                     <p className="text-xs leading-relaxed text-stone-500">{f.reason}</p>
                   </li>
                 ))}

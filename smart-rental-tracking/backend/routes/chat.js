@@ -16,7 +16,11 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
   const flags = [];
 
   if (eq.siteId === null || eq.lastOperatorId === null) {
-    flags.push({ type: "UNASSIGNED", reason: "No site or no operator on record" });
+    flags.push({
+      type: "UNASSIGNED",
+      severity: "medium",
+      reason: "No site or no operator on record",
+    });
   }
 
   // Utilisation family — at most one flag, most specific first
@@ -25,16 +29,19 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
   if (eq.engineHoursPerDay === 0 && eq.operatingDays > 0) {
     flags.push({
       type: "NEVER OPERATED",
+      severity: "high",
       reason: `On rent ${eq.operatingDays} operating days but 0 engine hours/day — never started`,
     });
   } else if (ratio > 0.6) {
     flags.push({
       type: "UNDERUTILIZED",
+      severity: ratio > 0.85 ? "high" : "medium",
       reason: `Idle ratio ${Math.round(ratio * 100)}%`,
     });
   } else if (eq.idleHoursPerDay >= 10) {
     flags.push({
       type: "EXCESSIVE IDLE",
+      severity: "medium",
       reason: `${eq.idleHoursPerDay}h idle per day — sustained long idle hours`,
     });
   }
@@ -46,6 +53,7 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
     if (eq.operatingDays > days) {
       flags.push({
         type: "RENTAL INTEGRITY ISSUE",
+        severity: "high",
         reason: `Operating days ${eq.operatingDays} exceed rental window ${days} days`,
       });
     }
@@ -57,6 +65,7 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
   if (openMaint.length) {
     flags.push({
       type: "OPEN MAINTENANCE",
+      severity: "medium",
       reason: `Unresolved: ${openMaint.map((m) => m.issueReported).join("; ")}`,
     });
   }
@@ -64,6 +73,7 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
   if (telemetry && telemetry.connectionStatus === "offline") {
     flags.push({
       type: "TELEMETRY OFFLINE",
+      severity: "high",
       reason:
         telemetry.offlineDurationSeconds != null
           ? `No heartbeat for ${telemetry.offlineDurationSeconds}s — machine disconnected`
@@ -74,6 +84,7 @@ function getAnomalies(eq, maintenance = [], telemetry = null) {
   if (eq.status === "active" && eq.checkInDate && new Date(eq.checkInDate) < new Date()) {
     flags.push({
       type: "RENTAL OVERRUN",
+      severity: "high",
       reason: "Past expected return date and not checked back in",
     });
   }

@@ -47,7 +47,7 @@ export function getAnomalies(eq, opts = {}) {
     flags.push({
       type: "UNDERUTILIZED",
       reason: `Idle ratio ${(idleRatio * 100).toFixed(0)}% (idle ${eq.idleHoursPerDay}h vs engine ${eq.engineHoursPerDay}h per day).`,
-      severity: "high",
+      severity: idleRatio > 0.85 ? "high" : "medium",
     });
   } else if (eq.idleHoursPerDay >= 10) {
     flags.push({
