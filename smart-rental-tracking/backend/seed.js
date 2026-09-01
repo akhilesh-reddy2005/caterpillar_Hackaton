@@ -7,6 +7,7 @@ const Booking = require("./models/Booking");
 const Maintenance = require("./models/Maintenance");
 const User = require("./models/User");
 const Operator = require("./models/Operator");
+const EquipmentTelemetry = require("./models/EquipmentTelemetry");
 
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/smart-rental-tracking";
@@ -131,15 +132,18 @@ const operatorData = [
 
 async function seed() {
   await mongoose.connect(MONGO_URI);
-  console.log("Connected to MongoDB for seeding");
+  // Show which database is being seeded (helps catch local vs Atlas mix-ups)
+  const target = MONGO_URI.replace(/\/\/[^@]*@/, "//***@");
+  console.log("Connected for seeding ->", target);
 
-  // Safely clear old demo data
+  // Safely clear ALL old demo data (every collection the app writes to)
   await Promise.all([
     Equipment.deleteMany({}),
     Booking.deleteMany({}),
     Maintenance.deleteMany({}),
     User.deleteMany({}),
     Operator.deleteMany({}),
+    EquipmentTelemetry.deleteMany({}),
   ]);
   console.log("Cleared old demo data");
 
