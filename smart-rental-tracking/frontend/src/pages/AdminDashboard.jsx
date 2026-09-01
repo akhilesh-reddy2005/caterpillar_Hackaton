@@ -7,6 +7,7 @@ import MaintenancePanel from "../components/MaintenancePanel.jsx";
 import DemandInsights from "../components/DemandInsights.jsx";
 import OperatorTable from "../components/OperatorTable.jsx";
 import ChatWidget from "../components/ChatWidget.jsx";
+import LiveTelemetryMonitor from "../components/LiveTelemetryMonitor.jsx";
 import Icon from "../components/Icon.jsx";
 import { Loading, Alert } from "../components/ui.jsx";
 import { getContext } from "../services/api.js";
@@ -15,6 +16,7 @@ import { displayStatus, getAnomalies } from "../utils/helpers.js";
 
 const NAV = [
   { label: "Dashboard", icon: "grid" },
+  { label: "Live Telemetry", icon: "activity" },
   { label: "QR Scanner", icon: "scan" },
   { label: "Equipment", icon: "cube" },
   { label: "Anomalies", icon: "alert" },
@@ -147,6 +149,7 @@ export default function AdminDashboard() {
                 <StatCard label="Overdue" value={overdueCount} icon="alert" tone="red" />
                 <StatCard label="Open anomalies" value={anomalyCount} icon="alert" tone="red" />
               </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <MiniPanel
                   title="Maintenance"
@@ -164,6 +167,12 @@ export default function AdminDashboard() {
               <div className="card p-5">
                 <AnomalyPanel equipment={data.equipment} />
               </div>
+            </div>
+          )}
+
+          {!loading && tab === "Live Telemetry" && (
+            <div className="space-y-6">
+              <LiveTelemetryMonitor equipment={data.equipment} />
             </div>
           )}
 

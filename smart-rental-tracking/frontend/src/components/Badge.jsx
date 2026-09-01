@@ -16,6 +16,12 @@ const STYLES = {
   high: "bg-red-50 text-red-700 ring-red-600/20",
   medium: "bg-amber-50 text-amber-700 ring-amber-600/20",
   low: "bg-stone-100 text-stone-600 ring-stone-500/20",
+  online: "bg-emerald-50 text-emerald-700 ring-emerald-600/30",
+  offline: "bg-red-50 text-red-700 ring-red-600/30",
+  running: "bg-emerald-50 text-emerald-700 ring-emerald-600/30",
+  idle: "bg-amber-50 text-amber-700 ring-amber-600/30",
+  stopped: "bg-stone-100 text-stone-600 ring-stone-500/30",
+  unknown: "bg-stone-100 text-stone-500 ring-stone-400/30",
 };
 
 export default function Badge({ status, label }) {

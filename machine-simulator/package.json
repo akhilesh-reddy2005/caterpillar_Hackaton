@@ -1,0 +1,12 @@
+{
+  "name": "caterpillar-machine-simulator",
+  "version": "1.0.0",
+  "description": "IoT / Telematics simulator for Caterpillar construction & mining equipment",
+  "main": "simulator.js",
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "keywords": ["caterpillar", "iot", "simulator", "telemetry"],
+  "author": "",
+  "license": "ISC"
+}

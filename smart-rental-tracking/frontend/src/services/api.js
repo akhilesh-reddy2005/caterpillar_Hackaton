@@ -36,7 +36,13 @@ export const updateMaintenance = (id, data) =>
 // ---- Users ----
 export const getUser = (userId) => api.get(`/users/${userId}`);
 
-// ---- Combined snapshot (equipment + maintenance + bookings + operators) ----
+// ---- Telemetry ----
+export const getTelemetry = (equipmentId) => api.get(`/telemetry/${equipmentId}`);
+export const getAllTelemetry = () => api.get("/telemetry");
+export const sendTelemetry = (equipmentId, data) =>
+  api.post(`/telemetry/${equipmentId}`, data);
+
+// ---- Combined snapshot (equipment + maintenance + bookings + operators + telemetry) ----
 export const getContext = () => api.get("/chatbot-context");
 
 export default api;

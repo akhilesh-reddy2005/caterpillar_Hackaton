@@ -151,7 +151,10 @@ npm run dev
 | POST | `/api/maintenance` | create record |
 | PATCH | `/api/maintenance/:id` | update status (sets resolvedDate when resolved) |
 | GET | `/api/users` / `/api/users/:userId` | |
-| GET | `/api/chatbot-context` | combined equipment + maintenance + bookings + operators (for n8n) |
+| POST | `/api/telemetry/:equipmentId` | receive machine heartbeat & telemetry metrics |
+| GET | `/api/telemetry/:equipmentId` | get latest telemetry & dynamic connection status (online/offline) |
+| GET | `/api/telemetry` | get telemetry overview for all equipment |
+| GET | `/api/chatbot-context` | combined equipment + maintenance + bookings + operators + telemetry (for n8n) |
 
 ## 13. QR flow
 
