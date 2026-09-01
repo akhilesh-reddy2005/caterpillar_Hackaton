@@ -2,7 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import Icon from "./Icon.jsx";
 import { Spinner } from "./ui.jsx";
+import api from "../services/api.js";
 
+// If a webhook URL is configured (e.g. n8n) we call that; otherwise we use the
+// backend's built-in /api/chat route (Groq).
 const WEBHOOK_URL = import.meta.env.VITE_CHATBOT_WEBHOOK_URL;
 
 const SUGGESTIONS = [
@@ -33,24 +36,29 @@ export default function ChatWidget() {
     setMessages((m) => [...m, { from: "user", text: question }]);
     setInput("");
 
-    if (!WEBHOOK_URL) {
-      setMessages((m) => [...m, { from: "bot", text: "Chatbot is not configured." }]);
-      return;
-    }
-
     setLoading(true);
     try {
-      const res = await axios.post(WEBHOOK_URL, { question });
-      const reply =
-        res.data?.answer ||
-        res.data?.reply ||
-        res.data?.output ||
-        (typeof res.data === "string" ? res.data : JSON.stringify(res.data));
+      let reply;
+      if (WEBHOOK_URL) {
+        const res = await axios.post(WEBHOOK_URL, { question });
+        reply =
+          res.data?.answer ||
+          res.data?.reply ||
+          res.data?.output ||
+          (typeof res.data === "string" ? res.data : JSON.stringify(res.data));
+      } else {
+        const res = await api.post("/chat", { question });
+        reply = res.data.answer;
+      }
       setMessages((m) => [...m, { from: "bot", text: reply }]);
-    } catch {
+    } catch (err) {
       setMessages((m) => [
         ...m,
-        { from: "bot", text: "Sorry, the chatbot could not be reached." },
+        {
+          from: "bot",
+          text:
+            err.response?.data?.answer || "Sorry, the assistant could not be reached.",
+        },
       ]);
     } finally {
       setLoading(false);
@@ -76,7 +84,7 @@ export default function ChatWidget() {
             <div className="leading-tight">
               <p className="text-sm font-bold">Rental Assistant</p>
               <p className="text-[11px] text-stone-400">
-                {WEBHOOK_URL ? "Connected via n8n" : "Not configured"}
+                {WEBHOOK_URL ? "Connected via n8n" : "Powered by Groq"}
               </p>
             </div>
           </div>
