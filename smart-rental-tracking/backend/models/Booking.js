@@ -19,7 +19,9 @@ const bookingSchema = new mongoose.Schema({
     enum: ["self", "caterpillar-assigned"],
   },
   assignedOperatorId: { type: String, default: null },
+  rentalDays: { type: Number, default: 7, min: 1 },
   checkOutDate: { type: Date, default: null },
+  expectedReturnDate: { type: Date, default: null },
   checkInDate: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
 });

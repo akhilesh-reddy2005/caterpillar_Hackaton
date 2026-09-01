@@ -7,11 +7,15 @@ import { Spinner, Alert } from "./ui.jsx";
 
 export default function BookingModal({ equipment, userId, onClose, onBooked }) {
   const [operatorRequest, setOperatorRequest] = useState("caterpillar-assigned");
+  const [rentalDays, setRentalDays] = useState(7);
   const [operators, setOperators] = useState([]);
   const [loadingOps, setLoadingOps] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+
+  const days = Math.max(1, Math.min(90, Number(rentalDays) || 1));
+  const estReturn = new Date(Date.now() + days * 86400000).toLocaleDateString();
 
   useEffect(() => {
     if (operatorRequest !== "caterpillar-assigned") return;
@@ -30,6 +34,7 @@ export default function BookingModal({ equipment, userId, onClose, onBooked }) {
         userId,
         equipmentId: equipment.equipmentId,
         operatorRequest,
+        rentalDays: days,
       });
       setConfirmation(res.data);
       onBooked && onBooked();
@@ -87,6 +92,40 @@ export default function BookingModal({ equipment, userId, onClose, onBooked }) {
                   </p>
                 </div>
               </div>
+
+              <p className="mb-2 text-sm font-semibold text-stone-800">
+                How many days do you need this equipment?
+              </p>
+              <div className="mb-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={rentalDays}
+                  onChange={(e) => setRentalDays(e.target.value)}
+                  className="input w-24"
+                />
+                <span className="text-sm text-stone-500">days</span>
+                <div className="ml-auto flex gap-1">
+                  {[3, 7, 14, 30].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setRentalDays(d)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                        days === d
+                          ? "bg-cat-ink text-white"
+                          : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                      }`}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="mb-5 text-xs text-stone-400">
+                Estimated return by <span className="font-medium text-stone-600">{estReturn}</span>{" "}
+                (final window starts at Admin pickup scan).
+              </p>
 
               <p className="mb-2.5 text-sm font-semibold text-stone-800">
                 How would you like to operate this equipment?

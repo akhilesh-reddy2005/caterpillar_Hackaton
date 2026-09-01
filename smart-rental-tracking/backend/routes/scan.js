@@ -69,11 +69,18 @@ router.post("/confirm-pickup", async (req, res) => {
     if (!equipment) return res.status(404).json({ message: "Equipment not found" });
 
     const now = new Date();
+    // Expected return = pickup time + the number of days the customer booked
+    const expectedReturn = new Date(
+      now.getTime() + (booking.rentalDays || 7) * 24 * 60 * 60 * 1000
+    );
 
     booking.checkOutDate = now;
+    booking.expectedReturnDate = expectedReturn;
     booking.qrStatus = "checked-out";
 
     equipment.checkOutDate = now;
+    equipment.checkInDate = expectedReturn; // expected return date (drives overdue / due-soon)
+    equipment.actualReturnDate = null;
     equipment.status = "active";
     if (siteId) equipment.siteId = siteId;
 
@@ -110,10 +117,10 @@ router.post("/confirm-return", async (req, res) => {
 
     const now = new Date();
 
-    booking.checkInDate = now;
+    booking.checkInDate = now; // actual return time
     booking.qrStatus = "completed";
 
-    equipment.checkInDate = now;
+    // keep equipment.checkInDate as the EXPECTED return date; record the actual one
     equipment.actualReturnDate = now;
     equipment.status = "available";
 

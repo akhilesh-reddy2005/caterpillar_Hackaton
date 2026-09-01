@@ -15,8 +15,13 @@ export default function QRCard({ data }) {
         ? "Own operator"
         : booking.assignedOperatorId || "—",
     ],
+    ["Rental duration", booking.rentalDays ? `${booking.rentalDays} days` : "—"],
+    [
+      "Expected return",
+      fmtDate(booking.expectedReturnDate || equipment?.checkInDate),
+    ],
     ["Pickup date", fmtDate(booking.checkOutDate)],
-    ["Return date", fmtDate(booking.checkInDate)],
+    ["Returned on", fmtDate(booking.checkInDate)],
   ];
 
   return (

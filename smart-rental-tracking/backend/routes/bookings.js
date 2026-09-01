@@ -22,6 +22,9 @@ router.post("/", async (req, res) => {
         .json({ message: "userId, equipmentId and operatorRequest are required" });
     }
 
+    // How many days the customer wants the equipment (min 1, default 7)
+    const rentalDays = Math.max(1, parseInt(req.body.rentalDays, 10) || 7);
+
     const equipment = await Equipment.findOne({ equipmentId });
     if (!equipment) {
       return res.status(404).json({ message: "Equipment not found" });
@@ -53,6 +56,7 @@ router.post("/", async (req, res) => {
       equipmentId,
       operatorRequest,
       assignedOperatorId: assignedOperator ? assignedOperator.operatorId : null,
+      rentalDays,
       paymentStatus: "paid", // mock payment
       qrStatus: "unused",
     });

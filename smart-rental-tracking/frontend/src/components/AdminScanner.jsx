@@ -153,6 +153,16 @@ export default function AdminScanner({ onChange }) {
                 label="Operator mode"
                 value={(result.booking.operatorRequest || "—").replace(/-/g, " ")}
               />
+              <Field
+                label="Booked duration"
+                value={result.booking.rentalDays ? `${result.booking.rentalDays} days` : "—"}
+              />
+              {result.action === "confirm-return" && result.booking.expectedReturnDate && (
+                <Field
+                  label="Was due"
+                  value={new Date(result.booking.expectedReturnDate).toLocaleDateString()}
+                />
+              )}
               {result.equipment && (
                 <>
                   <Field
